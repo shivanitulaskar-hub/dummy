@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -28,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestClockConfig.class)
 @ActiveProfiles("test")
 public abstract class IntegrationTest {
 
@@ -54,6 +56,13 @@ public abstract class IntegrationTest {
     protected RoleRepository roleRepository;
     @Autowired
     protected PasswordEncoder passwordEncoder;
+    @Autowired
+    protected MutableClock clock;
+
+    @org.junit.jupiter.api.BeforeEach
+    void resetClock() {
+        clock.reset();
+    }
 
     protected String login(String username, String password) throws Exception {
         String body = mockMvc.perform(post("/api/auth/login")

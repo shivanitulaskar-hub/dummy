@@ -93,6 +93,10 @@ code change. The defaults below are what the seed data uses until confirmed.
 | Same game disc rented twice | Generated column `active_game_id` + UNIQUE index (same pattern as stations). |
 | Stock races | Stock changes are insert-only `inventory_transactions`; the cached `food_items.stock_quantity` is updated with an atomic `UPDATE … SET stock = stock + ?` in the same transaction. |
 | Editing a closed day | Service-level guard checks `daily_closings` for the business date; admin reopen is audited. |
+| Seeing a stale row after waiting for a lock | Session write operations run at **READ COMMITTED**. Under MySQL's default REPEATABLE READ, a request that waited on a row lock could keep reading the snapshot from before the wait (e.g. a retried completion not seeing the bill the first request just committed). |
+| Deadlock on the bill-number counter | The counter row is only ever locked with `SELECT … FOR UPDATE`. A new year's row is created in its own committed transaction first. (`INSERT IGNORE` + `FOR UPDATE` in one transaction takes a shared then an exclusive lock and deadlocks when two counters bill at once; found and fixed via the concurrency tests.) |
+| Customer totals updated by two bills at once | Atomic `UPDATE … SET total = total + ?` instead of read-modify-write on the entity. |
+| Same-origin requests behind nginx | nginx forwards `Host` *with port*, Spring uses `ForwardedHeaderFilter`, so the browser's `Origin` matches and CORS doesn't reject the app's own requests. |
 
 ---
 
@@ -265,6 +269,12 @@ Original item prices are never changed. The discount is its own field and audit 
 * Percentages keep 4 dp internally until applied.
 * Grand total → nearest rupee HALF_UP, with `round_off` stored (setting `billing.round-to-rupee`, default true).
 * Time is billed in whole minutes (seconds truncated): the customer is never charged for a partial minute.
+* The application clock ticks in **microseconds**, matching MySQL `DATETIME(6)`. MySQL *rounds* extra
+  precision, so a nanosecond start time could be stored slightly later than the value used in code, and
+  exactly 71 minutes could become 70.99999 and be billed one interval too low. Found by the integration tests.
+* The END preview freezes the end time. Completing the bill uses that time (accepted up to
+  `session.max-end-backdate-minutes` old, never in the future), so the customer pays for what they reviewed
+  even if payment takes a minute.
 
 ---
 

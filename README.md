@@ -3,9 +3,10 @@
 Web application for **Console Adda**, a PS5 gaming cafe in Mumbai. It runs the counter: live PS5
 sessions, automatic billing, food & beverages, game rentals, inventory, daily closing and reports.
 
-> **Status: Phase 1 of 6 complete.** Working today: database schema & seed data, login with roles,
-> forced password change, station list, Docker setup. Sessions/billing arrive in Phase 2. Screens for
-> later phases are shown as clearly-labelled placeholders. See [Roadmap](#roadmap).
+> **Status: Phase 2 of 6 complete.** Working today: login with roles, live PS5 session board
+> (start → live timer & estimate → END → payment → numbered bill), billing & rounding engine, pricing
+> master, station management, audit trail for these actions. Food, invoices and printing arrive in
+> Phase 3. Screens for later phases are shown as clearly-labelled placeholders. See [Roadmap](#roadmap).
 
 ## Contents
 - [Architecture](#architecture)
@@ -165,9 +166,18 @@ Endpoints available now:
 | Method | Path | Access |
 |---|---|---|
 | POST | `/api/auth/login` | public |
-| GET | `/api/auth/me` | logged in |
-| POST | `/api/auth/change-password` | logged in |
+| GET | `/api/auth/me` · POST `/api/auth/change-password` | logged in |
 | GET | `/api/stations?includeInactive=false` | logged in |
+| POST / PUT / DELETE | `/api/stations`, `/api/stations/{id}` | ADMIN |
+| GET | `/api/pricing`, `/api/pricing/{id}`, `/api/pricing/current` | logged in |
+| GET | `/api/pricing/quote?minutes=95&players=3[&creditMinutes=15][&planId=]` | logged in |
+| POST / PUT / DELETE | `/api/pricing`, `/api/pricing/{id}` | ADMIN |
+| POST | `/api/sessions` (start) | logged in |
+| GET | `/api/sessions/active`, `/api/sessions/{id}` | logged in |
+| PATCH | `/api/sessions/{id}` (players, customer, notes) | logged in |
+| POST | `/api/sessions/{id}/end` (preview bill, saves nothing) | logged in |
+| POST | `/api/sessions/{id}/complete` (+ optional `Idempotency-Key` header) | logged in |
+| POST | `/api/sessions/{id}/cancel` | operator within 15 min of start; admin any time |
 | GET | `/api/users` | ADMIN |
 | GET | `/actuator/health` | public |
 
@@ -182,7 +192,9 @@ cd frontend && npm run lint && npm run build
 ```
 
 Integration tests start a throwaway MySQL container and run the real Flyway migrations, so they
-test the actual schema, constraints and SQL, not an in-memory imitation.
+test the actual schema, constraints and SQL, not an in-memory imitation. Concurrency tests release
+several requests at once (simultaneous starts on one PS5, simultaneous bill completions, retried
+requests) and check that exactly one succeeds and nothing is double-billed.
 
 ## Production deployment
 
@@ -228,8 +240,8 @@ Backups contain customer names and mobile numbers, so store them securely.
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Architecture, schema, Docker, Flyway, authentication, app shell | ✅ Done |
-| 2 | Stations admin, pricing master, billing & rounding engine, sessions | Next |
-| 3 | Food, inventory, bills, discounts, GST, invoice printing | Planned |
+| 2 | Stations admin, pricing master, billing & rounding engine, sessions | ✅ Done |
+| 3 | Food, inventory, bills, discounts, GST, invoice printing | Next |
 | 4 | Customers, game rentals, reports, dashboard, daily closing | Planned |
 | 5 | Admin panel, audit log, security hardening | Planned |
 | 6 | Full testing, bug fixing, UI polish, production review | Planned |

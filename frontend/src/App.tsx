@@ -6,6 +6,8 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { LiveSessionsPage } from './pages/LiveSessionsPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PricingPage } from './pages/admin/PricingPage';
+import { SettingsPage } from './pages/admin/SettingsPage';
 
 export function App() {
   return (
@@ -46,14 +48,8 @@ export function App() {
             element={<PlaceholderPage title="Inventory" phase={3} description="Stock ledger: opening, purchases, sales, wastage and adjustments." />}
           />
           <Route element={<RequireAuth roles={['ADMIN']} />}>
-            <Route
-              path="/pricing"
-              element={<PlaceholderPage title="Pricing" phase={2} description="Rate cards, duration slabs, grace period and player pricing." />}
-            />
-            <Route
-              path="/settings"
-              element={<PlaceholderPage title="Settings" phase={5} description="Stations, GST, discounts, users and business details." />}
-            />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Route>
