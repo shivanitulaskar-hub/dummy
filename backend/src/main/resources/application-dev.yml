@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------------------
+# DEVELOPMENT PROFILE - NEVER USE IN PRODUCTION.
+# Creates well-known development accounts (documented in README):
+#   admin    / Admin@1234
+#   operator / Operator@1234
+# ---------------------------------------------------------------------------
+app:
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  security:
+    # Development-only fallback so `mvn spring-boot:run` works without env vars.
+    jwt-secret: ${JWT_SECRET:dev-only-insecure-jwt-secret-change-me-0123456789}
+  bootstrap:
+    users:
+      - username: admin
+        password: Admin@1234
+        full-name: Development Admin
+        role: ADMIN
+        must-change-password: false
+      - username: operator
+        password: Operator@1234
+        full-name: Development Operator
+        role: OPERATOR
+        must-change-password: false
+
+logging:
+  level:
+    com.consoleadda: DEBUG

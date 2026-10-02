@@ -1,0 +1,15 @@
+app:
+  security:
+    jwt-secret: test-only-jwt-secret-0123456789-abcdefghijklmnop
+  bootstrap:
+    users:
+      - username: admin
+        password: Admin@1234
+        full-name: Test Admin
+        role: ADMIN
+        must-change-password: false
+      - username: operator
+        password: Operator@1234
+        full-name: Test Operator
+        role: OPERATOR
+        must-change-password: false

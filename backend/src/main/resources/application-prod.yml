@@ -1,0 +1,16 @@
+# Production profile: every secret must be provided through environment variables.
+# The first admin is created from APP_BOOTSTRAP_ADMIN_* and must change the password at first login.
+springdoc:
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+
+app:
+  bootstrap:
+    users:
+      - username: ${APP_BOOTSTRAP_ADMIN_USERNAME:admin}
+        password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+        full-name: Administrator
+        role: ADMIN
+        must-change-password: true

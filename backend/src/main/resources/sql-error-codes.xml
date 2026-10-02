@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN" "https://www.springframework.org/dtd/spring-beans-2.0.dtd">
+<!--
+    Overrides Spring's default MySQL error-code mapping (org/springframework/jdbc/support/sql-error-codes.xml)
+    to also classify these as data-integrity violations instead of "uncategorized" errors:
+      1048 column cannot be null, 1406 data too long, 3819 CHECK constraint violated.
+-->
+<beans>
+    <bean id="MySQL" class="org.springframework.jdbc.support.SQLErrorCodes">
+        <property name="databaseProductNames">
+            <list>
+                <value>MySQL</value>
+                <value>MariaDB</value>
+            </list>
+        </property>
+        <property name="badSqlGrammarCodes">
+            <value>1054,1064,1146</value>
+        </property>
+        <property name="duplicateKeyCodes">
+            <value>1062</value>
+        </property>
+        <property name="dataIntegrityViolationCodes">
+            <value>630,839,840,893,1048,1169,1215,1216,1217,1364,1406,1451,1452,1557,3819</value>
+        </property>
+        <property name="dataAccessResourceFailureCodes">
+            <value>1</value>
+        </property>
+        <property name="cannotAcquireLockCodes">
+            <value>1205,3572</value>
+        </property>
+        <property name="deadlockLoserCodes">
+            <value>149,1213</value>
+        </property>
+    </bean>
+</beans>
