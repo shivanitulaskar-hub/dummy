@@ -69,4 +69,14 @@ public class CustomerService {
     public void recordVisit(Customer customer, int gamingMinutes, BigDecimal amount, Instant at) {
         repository.recordVisit(customer.getId(), gamingMinutes, amount, at);
     }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void recordPurchase(Customer customer, BigDecimal amount, Instant at) {
+        repository.recordPurchase(customer.getId(), amount, at);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void reverse(Customer customer, int sessions, int gamingMinutes, BigDecimal amount) {
+        repository.reverseTotals(customer.getId(), sessions, gamingMinutes, amount);
+    }
 }

@@ -7,6 +7,10 @@ import { LiveSessionsPage } from './pages/LiveSessionsPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PricingPage } from './pages/admin/PricingPage';
+import { BillPrintPage } from './pages/BillPrintPage';
+import { BillsPage } from './pages/BillsPage';
+import { FoodPage } from './pages/FoodPage';
+import { InventoryPage } from './pages/InventoryPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
 
 export function App() {
@@ -15,6 +19,7 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/change-password" element={<ChangePasswordPage />} />
+        <Route path="/bills/:id/print" element={<BillPrintPage />} />
         <Route element={<AppLayout />}>
           {/* Live Sessions is the operator's landing page. */}
           <Route index element={<Navigate to="/live" replace />} />
@@ -23,18 +28,12 @@ export function App() {
             path="/dashboard"
             element={<PlaceholderPage title="Dashboard" phase={4} description="Revenue tiles, charts and station utilization." />}
           />
-          <Route
-            path="/bills"
-            element={<PlaceholderPage title="Bills" phase={3} description="Bill search, invoices and printing." />}
-          />
+          <Route path="/bills" element={<BillsPage />} />
           <Route
             path="/customers"
             element={<PlaceholderPage title="Customers" phase={4} description="Customer master, search and history." />}
           />
-          <Route
-            path="/food"
-            element={<PlaceholderPage title="Food & Beverages" phase={3} description="Menu, walk-in food sales and add-to-session." />}
-          />
+          <Route path="/food" element={<FoodPage />} />
           <Route
             path="/rentals"
             element={<PlaceholderPage title="Game Rentals" phase={4} description="Rent out and return games, late fees and ROI." />}
@@ -43,10 +42,7 @@ export function App() {
             path="/reports"
             element={<PlaceholderPage title="Reports" phase={4} description="Daily/monthly sales, payment and utilization reports with CSV export." />}
           />
-          <Route
-            path="/inventory"
-            element={<PlaceholderPage title="Inventory" phase={3} description="Stock ledger: opening, purchases, sales, wastage and adjustments." />}
-          />
+          <Route path="/inventory" element={<InventoryPage />} />
           <Route element={<RequireAuth roles={['ADMIN']} />}>
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/settings" element={<SettingsPage />} />

@@ -12,10 +12,9 @@ import com.consoleadda.entity.BillItemType;
 import com.consoleadda.entity.BillStatus;
 import com.consoleadda.entity.BillType;
 import com.consoleadda.entity.Customer;
+import com.consoleadda.entity.Discount;
 import com.consoleadda.entity.GamingSession;
 import com.consoleadda.entity.GamingStation;
-import com.consoleadda.entity.Payment;
-import com.consoleadda.entity.PaymentType;
 import com.consoleadda.entity.PricingPlan;
 import com.consoleadda.entity.SessionStatus;
 import com.consoleadda.exception.BusinessException;
@@ -64,7 +63,8 @@ public class SessionService {
     private final PricingService pricingService;
     private final CustomerService customerService;
     private final SessionChargeService chargeService;
-    private final BillNumberService billNumberService;
+    private final BillFinalizer billFinalizer;
+    private final DiscountService discountService;
     private final BusinessDayService businessDay;
     private final SettingsService settings;
     private final AuditService auditService;
@@ -73,7 +73,7 @@ public class SessionService {
 
     public SessionService(GamingSessionRepository sessionRepository, GamingStationRepository stationRepository,
                           BillRepository billRepository, PricingService pricingService, CustomerService customerService,
-                          SessionChargeService chargeService, BillNumberService billNumberService,
+                          SessionChargeService chargeService, BillFinalizer billFinalizer, DiscountService discountService,
                           BusinessDayService businessDay, SettingsService settings, AuditService auditService,
                           SessionMapper mapper, Clock clock) {
         this.sessionRepository = sessionRepository;
@@ -82,7 +82,8 @@ public class SessionService {
         this.pricingService = pricingService;
         this.customerService = customerService;
         this.chargeService = chargeService;
-        this.billNumberService = billNumberService;
+        this.billFinalizer = billFinalizer;
+        this.discountService = discountService;
         this.businessDay = businessDay;
         this.settings = settings;
         this.auditService = auditService;
@@ -189,12 +190,15 @@ public class SessionService {
 
     /** Calculates the bill as of now without changing anything; the returned end time is used to complete. */
     @Transactional(readOnly = true)
-    public SessionResponse preview(Long id) {
+    public SessionResponse preview(Long id, Long discountId, Instant endedAt) {
         GamingSession session = loadDetailed(id);
         if (session.getStatus() != SessionStatus.ACTIVE) {
             throw notActive(session);
         }
-        return mapper.toResponse(session, chargeService.compute(session, clock.instant()).breakdown());
+        Instant now = clock.instant();
+        Instant end = endedAt == null ? now : validateEndTime(session, endedAt, now);
+        Discount discount = discountService.resolve(discountId, businessDay.businessDate(now));
+        return mapper.toResponse(session, chargeService.compute(session, end, discount).breakdown());
     }
 
     // ------------------------------------------------------------------ complete
@@ -225,7 +229,8 @@ public class SessionService {
         LocalDate businessDate = businessDay.businessDate(now);
         businessDay.ensureOpen(businessDate);
 
-        SessionChargeService.Computed computed = chargeService.compute(session, endedAt);
+        Discount discount = discountService.resolve(request.discountId(), businessDate);
+        SessionChargeService.Computed computed = chargeService.compute(session, endedAt, discount);
         BillCalculator.Result totals = computed.totals();
         AuthenticatedUser user = CurrentUser.require();
 
@@ -248,46 +253,19 @@ public class SessionService {
         gamingLine.setCreatedBy(user.id());
         bill.addItem(gamingLine);
 
-        bill.setGamingAmount(totals.gamingAmount());
-        bill.setFoodAmount(totals.foodAmount());
-        bill.setRentalAmount(totals.rentalAmount());
-        bill.setSubtotal(totals.subtotal());
-        bill.setDiscountAmount(totals.discountAmount());
-        bill.setTaxableAmount(totals.taxableAmount());
-        bill.setTaxAmount(totals.taxAmount());
-        bill.setRoundOff(totals.roundOff());
-        bill.setTotalAmount(totals.totalAmount());
-        bill.setBusinessDate(businessDate);
-        bill.setBillNumber(billNumberService.next(businessDate));
-        bill.setStatus(BillStatus.PAID);
-        bill.setPaidAt(now);
-        bill.setPaidBy(user.id());
-        bill.setIdempotencyKey(StringUtils.hasText(idempotencyKey) ? idempotencyKey : null);
-
-        if (totals.totalAmount().signum() > 0) {
-            Payment payment = new Payment();
-            payment.setPaymentType(PaymentType.PAYMENT);
-            payment.setMode(request.paymentMode());
-            payment.setAmount(totals.totalAmount());
-            payment.setReferenceNo(StringUtils.hasText(request.referenceNo()) ? request.referenceNo().trim() : null);
-            payment.setBusinessDate(businessDate);
-            payment.setReceivedBy(user.id());
-            payment.setReceivedAt(now);
-            bill.addPayment(payment);
-        }
+        billFinalizer.finalizeBill(bill, totals, discount,
+                new BillFinalizer.PaymentInfo(request.paymentMode(), request.referenceNo()),
+                idempotencyKey, businessDate, now, user);
         if (session.getCustomer() != null) {
             customerService.recordVisit(session.getCustomer(), computed.billableMinutes(), totals.totalAmount(), endedAt);
         }
         sessionRepository.saveAndFlush(session);
 
-        Map<String, Object> billAudit = new LinkedHashMap<>();
-        billAudit.put("billNumber", bill.getBillNumber());
-        billAudit.put("station", session.getStation().getCode());
-        billAudit.put("billableMinutes", computed.billableMinutes());
-        billAudit.put("gamingAmount", bill.getGamingAmount());
-        billAudit.put("totalAmount", bill.getTotalAmount());
-        billAudit.put("paymentMode", request.paymentMode());
-        auditService.record("BILL_CREATED", "Bill", bill.getId(), null, billAudit);
+        Map<String, Object> context = new LinkedHashMap<>();
+        context.put("station", session.getStation().getCode());
+        context.put("billableMinutes", computed.billableMinutes());
+        context.put("creditMinutes", computed.creditMinutes());
+        billFinalizer.audit(bill, discount, request.paymentMode(), context);
         log.info("Session {} completed: bill {} total ₹{} via {} by {}", id, bill.getBillNumber(),
                 bill.getTotalAmount(), request.paymentMode(), user.username());
         return mapper.toResponse(session, chargeService.stored(session));

@@ -3,10 +3,12 @@
 Web application for **Console Adda**, a PS5 gaming cafe in Mumbai. It runs the counter: live PS5
 sessions, automatic billing, food & beverages, game rentals, inventory, daily closing and reports.
 
-> **Status: Phase 2 of 6 complete.** Working today: login with roles, live PS5 session board
-> (start → live timer & estimate → END → payment → numbered bill), billing & rounding engine, pricing
-> master, station management, audit trail for these actions. Food, invoices and printing arrive in
-> Phase 3. Screens for later phases are shown as clearly-labelled placeholders. See [Roadmap](#roadmap).
+> **Status: Phase 3 of 6 complete.** Working today: login with roles, live PS5 session board
+> (start → add food → END → discount → payment → numbered bill → print), billing & rounding engine,
+> pricing master, station management, food menu, counter (walk-in) sales, 15-minute drink credit,
+> discounts, per-category GST, stock ledger, bill search and cancellation, A4 and 80 mm invoices, audit
+> trail. Customers, rentals, reports, dashboard and daily closing arrive in Phase 4. Screens for later
+> phases are shown as clearly-labelled placeholders. See [Roadmap](#roadmap).
 
 ## Contents
 - [Architecture](#architecture)
@@ -144,7 +146,12 @@ npm run dev
   constraints), unique bill numbers.
 * Timestamps are stored in UTC; the business timezone is `Asia/Kolkata`.
 
-**Seed data to review before go-live:** food cost prices are `0.00` (needed for profit),
+**Printing:** the invoice page (`/bills/{id}/print`) prints on A4 or 80 mm thermal paper through the
+browser's print dialog. For a thermal printer, install its driver, set the paper size to 80 mm in the
+print dialog and turn off headers/footers and margins once; the browser remembers it.
+
+**Seed data to review before go-live:** set opening stock and reorder levels in Inventory (low-stock
+warnings start once a reorder level is set), food cost prices are `0.00` (needed for profit),
 rental game prices are the spec's sample values, GST is disabled, and the additional-player rule
 is pending confirmation (see `docs/ARCHITECTURE.md` §1.1).
 
@@ -178,6 +185,17 @@ Endpoints available now:
 | POST | `/api/sessions/{id}/end` (preview bill, saves nothing) | logged in |
 | POST | `/api/sessions/{id}/complete` (+ optional `Idempotency-Key` header) | logged in |
 | POST | `/api/sessions/{id}/cancel` | operator within 15 min of start; admin any time |
+| POST · PATCH · DELETE | `/api/sessions/{id}/items[/{lineId}]` (food on a running session) | logged in |
+| GET | `/api/food-items`, `/api/food-categories` | logged in (cost prices admin only) |
+| POST / PUT | `/api/food-items[/{id}]`, `/api/food-categories[/{id}]` | ADMIN |
+| GET | `/api/inventory/stock?from=&to=`, `/api/inventory/transactions` | logged in |
+| POST | `/api/inventory/transactions` (purchase, wastage; opening & adjustment admin only) | logged in |
+| POST | `/api/bills` (walk-in food sale, + optional `Idempotency-Key`) | logged in |
+| GET | `/api/bills?q=&from=&to=&status=`, `/api/bills/{id}`, `/api/bills/{id}/invoice` | logged in |
+| POST | `/api/bills/{id}/cancel` (full refund, stock returned) | ADMIN |
+| GET | `/api/discounts`, `/api/discounts/usable` | logged in |
+| POST / PUT | `/api/discounts[/{id}]` | ADMIN |
+| GET · PUT | `/api/settings/tax`, `/api/settings/tax/{GAMING\|FOOD\|RENTAL}` | ADMIN |
 | GET | `/api/users` | ADMIN |
 | GET | `/actuator/health` | public |
 
@@ -241,7 +259,7 @@ Backups contain customer names and mobile numbers, so store them securely.
 |---|---|---|
 | 1 | Architecture, schema, Docker, Flyway, authentication, app shell | ✅ Done |
 | 2 | Stations admin, pricing master, billing & rounding engine, sessions | ✅ Done |
-| 3 | Food, inventory, bills, discounts, GST, invoice printing | Next |
-| 4 | Customers, game rentals, reports, dashboard, daily closing | Planned |
+| 3 | Food, inventory, bills, discounts, GST, invoice printing | ✅ Done |
+| 4 | Customers, game rentals, reports, dashboard, daily closing | Next |
 | 5 | Admin panel, audit log, security hardening | Planned |
 | 6 | Full testing, bug fixing, UI polish, production review | Planned |

@@ -19,15 +19,33 @@ export async function updateSession(
   return data;
 }
 
-/** END: calculates the bill as of now; nothing is saved. */
-export async function previewEnd(id: number): Promise<GamingSession> {
-  const { data } = await api.post<GamingSession>(`/sessions/${id}/end`);
+/** END: calculates the bill without saving. Pass the frozen end time to keep re-previews consistent. */
+export async function previewEnd(id: number, discountId?: number | null, endedAt?: string | null): Promise<GamingSession> {
+  const { data } = await api.post<GamingSession>(`/sessions/${id}/end`, {
+    discountId: discountId ?? null,
+    endedAt: endedAt ?? null,
+  });
+  return data;
+}
+
+export async function addSessionItem(id: number, foodItemId: number, quantity = 1): Promise<GamingSession> {
+  const { data } = await api.post<GamingSession>(`/sessions/${id}/items`, { foodItemId, quantity });
+  return data;
+}
+
+export async function changeSessionItem(id: number, lineId: number, quantity: number): Promise<GamingSession> {
+  const { data } = await api.patch<GamingSession>(`/sessions/${id}/items/${lineId}`, { quantity });
+  return data;
+}
+
+export async function removeSessionItem(id: number, lineId: number): Promise<GamingSession> {
+  const { data } = await api.delete<GamingSession>(`/sessions/${id}/items/${lineId}`);
   return data;
 }
 
 export async function completeSession(
   id: number,
-  request: { endedAt: string; paymentMode: PaymentMode; referenceNo?: string },
+  request: { endedAt: string; paymentMode: PaymentMode; referenceNo?: string; discountId?: number | null },
   idempotencyKey: string,
 ): Promise<GamingSession> {
   const { data } = await api.post<GamingSession>(`/sessions/${id}/complete`, request, {

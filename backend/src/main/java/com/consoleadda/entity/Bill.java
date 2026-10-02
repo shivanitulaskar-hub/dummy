@@ -120,6 +120,15 @@ public class Bill extends BaseEntity {
     @OrderBy("id ASC")
     private List<Payment> payments = new ArrayList<>();
 
+    @OneToMany(mappedBy = "bill", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<BillTaxLine> taxLines = new ArrayList<>();
+
+    public void addTaxLine(BillTaxLine line) {
+        line.setBill(this);
+        taxLines.add(line);
+    }
+
     public void addItem(BillItem item) {
         item.setBill(this);
         items.add(item);

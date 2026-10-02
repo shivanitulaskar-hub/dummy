@@ -27,4 +27,22 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
             where c.id = :id""")
     int recordVisit(@Param("id") Long id, @Param("minutes") int minutes, @Param("amount") BigDecimal amount,
                     @Param("at") Instant at);
+
+    /** Walk-in purchase: adds spend and updates last visit without counting a gaming session. */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update Customer c set c.totalSpent = c.totalSpent + :amount,
+                c.lastVisitAt = case when c.lastVisitAt is null or c.lastVisitAt < :at then :at else c.lastVisitAt end
+            where c.id = :id""")
+    int recordPurchase(@Param("id") Long id, @Param("amount") BigDecimal amount, @Param("at") Instant at);
+
+    /** Reverses a cancelled bill's contribution to the cached totals. */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update Customer c set c.totalSessions = c.totalSessions - :sessions,
+                c.totalGamingMinutes = c.totalGamingMinutes - :minutes,
+                c.totalSpent = c.totalSpent - :amount
+            where c.id = :id""")
+    int reverseTotals(@Param("id") Long id, @Param("sessions") int sessions, @Param("minutes") int minutes,
+                      @Param("amount") BigDecimal amount);
 }

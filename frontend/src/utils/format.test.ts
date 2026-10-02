@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatElapsed, formatINR, formatMinutes } from './format';
+import { formatElapsed, formatINR, formatInvoiceAmount, formatMinutes } from './format';
 import { randomId } from './id';
 
 describe('format', () => {
@@ -7,6 +7,12 @@ describe('format', () => {
     expect(formatINR(190)).toBe('₹190');
     expect(formatINR(1234567.5)).toBe('₹12,34,567.5');
     expect(formatINR(null)).toBe('–');
+  });
+
+  it('formats invoice amounts with paise and a leading sign', () => {
+    expect(formatInvoiceAmount(43.9)).toBe('₹ 43.90');
+    expect(formatInvoiceAmount(-0.1)).toBe('− ₹ 0.10');
+    expect(formatInvoiceAmount(123456)).toBe('₹ 1,23,456.00');
   });
 
   it('formats minutes', () => {

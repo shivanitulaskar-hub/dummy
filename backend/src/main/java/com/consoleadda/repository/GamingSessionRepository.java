@@ -33,6 +33,8 @@ public interface GamingSessionRepository extends JpaRepository<GamingSession, Lo
             where s.id = :id""")
     Optional<GamingSession> findWithDetailsById(@Param("id") Long id);
 
+    Optional<GamingSession> findByBillId(Long billId);
+
     /** Row lock that serialises concurrent end/complete/cancel requests for the same session. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from GamingSession s where s.id = :id")

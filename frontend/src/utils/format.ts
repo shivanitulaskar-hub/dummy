@@ -11,6 +11,14 @@ export function formatINR(amount: number | null | undefined): string {
   return amount == null ? '–' : inr.format(amount);
 }
 
+const inrInvoice = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Invoice style: always two decimals, sign in front of the symbol ("₹ 43.90", "− ₹ 0.10"). */
+export function formatInvoiceAmount(amount: number): string {
+  const text = `₹ ${inrInvoice.format(Math.abs(amount))}`;
+  return amount < 0 ? `− ${text}` : text;
+}
+
 /** 90 → "1h 30m", 60 → "1h", 45 → "45m" */
 export function formatMinutes(minutes: number): string {
   const h = Math.floor(minutes / 60);

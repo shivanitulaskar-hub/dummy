@@ -14,6 +14,7 @@ public record ChargeBreakdown(
         String gamingExplanation,
         BigDecimal foodAmount,
         BigDecimal subtotal,
+        String discountName,
         BigDecimal discountAmount,
         BigDecimal taxAmount,
         BigDecimal roundOff,

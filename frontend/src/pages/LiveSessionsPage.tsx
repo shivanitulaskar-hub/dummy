@@ -16,6 +16,7 @@ import {
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import FastfoodIcon from '@mui/icons-material/Fastfood';
 import PeopleIcon from '@mui/icons-material/People';
 import TvIcon from '@mui/icons-material/Tv';
 import { useQuery } from '@tanstack/react-query';
@@ -24,10 +25,11 @@ import { fetchCurrentPlan } from '../api/pricing';
 import { fetchActiveSessions } from '../api/sessions';
 import { fetchStations } from '../api/stations';
 import type { GamingSession, Station } from '../api/types';
+import { AddFoodDialog } from '../components/sessions/AddFoodDialog';
 import { EndSessionDialog } from '../components/sessions/EndSessionDialog';
 import { CancelSessionDialog, ChangePlayersDialog } from '../components/sessions/SessionActionsDialogs';
 import { StartSessionDialog } from '../components/sessions/StartSessionDialog';
-import { formatElapsed, formatINR, formatTime } from '../utils/format';
+import { formatElapsed, formatINR, formatMinutes, formatTime } from '../utils/format';
 import { useNow } from '../utils/useNow';
 
 const REFRESH_MS = 15_000;
@@ -61,12 +63,14 @@ function ActiveCard({
   session,
   now,
   onEnd,
+  onAddFood,
   onChangePlayers,
   onCancel,
 }: {
   session: GamingSession;
   now: number;
   onEnd: () => void;
+  onAddFood: () => void;
   onChangePlayers: () => void;
   onCancel: () => void;
 }) {
@@ -115,10 +119,23 @@ function ActiveCard({
             {formatINR(session.charges?.totalAmount)}
           </Box>
         </Typography>
+        {session.charges && (session.charges.foodAmount > 0 || session.charges.creditMinutes > 0) && (
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+            {session.charges.foodAmount > 0 && <Chip size="small" variant="outlined" label={`Food ${formatINR(session.charges.foodAmount)}`} />}
+            {session.charges.creditMinutes > 0 && (
+              <Chip size="small" color="success" variant="outlined" label={`${formatMinutes(session.charges.creditMinutes)} free`} />
+            )}
+          </Stack>
+        )}
         <Box sx={{ flex: 1 }} />
-        <Button variant="contained" color="error" size="large" fullWidth startIcon={<StopIcon />} onClick={onEnd}>
-          END SESSION
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" size="large" startIcon={<FastfoodIcon />} onClick={onAddFood} sx={{ flex: 1 }}>
+            FOOD
+          </Button>
+          <Button variant="contained" color="error" size="large" startIcon={<StopIcon />} onClick={onEnd} sx={{ flex: 2 }}>
+            END
+          </Button>
+        </Stack>
         <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={() => setMenuAnchor(null)}>
           <MenuItem
             onClick={() => {
@@ -156,6 +173,7 @@ export function LiveSessionsPage() {
   const [startFor, setStartFor] = useState<Station | null>(null);
   const [endId, setEndId] = useState<number | null>(null);
   const [changePlayersFor, setChangePlayersFor] = useState<GamingSession | null>(null);
+  const [foodFor, setFoodFor] = useState<GamingSession | null>(null);
   const [cancelFor, setCancelFor] = useState<GamingSession | null>(null);
 
   const byStation = useMemo(() => {
@@ -203,6 +221,7 @@ export function LiveSessionsPage() {
                 session={session}
                 now={now}
                 onEnd={() => setEndId(session.id)}
+                onAddFood={() => setFoodFor(session)}
                 onChangePlayers={() => setChangePlayersFor(session)}
                 onCancel={() => setCancelFor(session)}
               />
@@ -218,6 +237,7 @@ export function LiveSessionsPage() {
 
       <StartSessionDialog station={startFor} onClose={() => setStartFor(null)} />
       <EndSessionDialog sessionId={endId} onClose={() => setEndId(null)} />
+      <AddFoodDialog session={foodFor} onClose={() => setFoodFor(null)} />
       <ChangePlayersDialog
         session={changePlayersFor}
         maxPlayers={plan.data?.maxPlayers ?? 4}

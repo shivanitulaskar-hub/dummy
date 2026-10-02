@@ -95,6 +95,8 @@ code change. The defaults below are what the seed data uses until confirmed.
 | Editing a closed day | Service-level guard checks `daily_closings` for the business date; admin reopen is audited. |
 | Seeing a stale row after waiting for a lock | Session write operations run at **READ COMMITTED**. Under MySQL's default REPEATABLE READ, a request that waited on a row lock could keep reading the snapshot from before the wait (e.g. a retried completion not seeing the bill the first request just committed). |
 | Deadlock on the bill-number counter | The counter row is only ever locked with `SELECT … FOR UPDATE`. A new year's row is created in its own committed transaction first. (`INSERT IGNORE` + `FOR UPDATE` in one transaction takes a shared then an exclusive lock and deadlocks when two counters bill at once; found and fixed via the concurrency tests.) |
+| Food added while the bill is being completed | Adding/changing/removing food locks the **session row first, then the bill**, the same order as completing; a lock-order race test checks that every unit taken from stock is on the paid bill. |
+| Stock going negative when disallowed | `UPDATE food_items SET stock = stock + ? WHERE id = ? AND stock + ? >= 0`: 0 rows → `OUT_OF_STOCK`, no read-then-write race. |
 | Customer totals updated by two bills at once | Atomic `UPDATE … SET total = total + ?` instead of read-modify-write on the entity. |
 | Same-origin requests behind nginx | nginx forwards `Host` *with port*, Spring uses `ForwardedHeaderFilter`, so the browser's `Origin` matches and CORS doesn't reject the app's own requests. |
 
@@ -272,6 +274,11 @@ Original item prices are never changed. The discount is its own field and audit 
 * The application clock ticks in **microseconds**, matching MySQL `DATETIME(6)`. MySQL *rounds* extra
   precision, so a nanosecond start time could be stored slightly later than the value used in code, and
   exactly 71 minutes could become 70.99999 and be billed one interval too low. Found by the integration tests.
+* GST is stored per bill and category in `bill_tax_lines` (rate, mode, SAC/HSN, taxable value, tax) at
+  payment time. Invoices read these rows, so changing GST settings never alters an issued bill. CGST/SGST
+  are shown as halves of the stored tax (intra-state supply).
+* Free gaming credit is recomputed from the bill's lines after every food change (minutes × quantity,
+  capped per session) and stored in `session_time_credits` with the source line and reason.
 * The END preview freezes the end time. Completing the bill uses that time (accepted up to
   `session.max-end-backdate-minutes` old, never in the future), so the customer pays for what they reviewed
   even if payment takes a minute.

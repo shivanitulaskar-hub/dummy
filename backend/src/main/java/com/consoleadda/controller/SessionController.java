@@ -2,14 +2,19 @@ package com.consoleadda.controller;
 
 import com.consoleadda.dto.session.CancelSessionRequest;
 import com.consoleadda.dto.session.CompleteSessionRequest;
+import com.consoleadda.dto.session.EndPreviewRequest;
+import com.consoleadda.dto.session.ItemQuantityRequest;
+import com.consoleadda.dto.session.SessionItemRequest;
 import com.consoleadda.dto.session.SessionResponse;
 import com.consoleadda.dto.session.StartSessionRequest;
 import com.consoleadda.dto.session.UpdateSessionRequest;
+import com.consoleadda.service.SessionItemService;
 import com.consoleadda.service.SessionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,9 +33,11 @@ import java.util.List;
 public class SessionController {
 
     private final SessionService sessionService;
+    private final SessionItemService sessionItemService;
 
-    public SessionController(SessionService sessionService) {
+    public SessionController(SessionService sessionService, SessionItemService sessionItemService) {
         this.sessionService = sessionService;
+        this.sessionItemService = sessionItemService;
     }
 
     @PostMapping
@@ -57,8 +64,27 @@ public class SessionController {
 
     /** END: calculates the bill as of now without saving anything. */
     @PostMapping("/{id}/end")
-    public SessionResponse end(@PathVariable Long id) {
-        return sessionService.preview(id);
+    public SessionResponse end(@PathVariable Long id, @RequestBody(required = false) EndPreviewRequest request) {
+        return sessionService.preview(id, request == null ? null : request.discountId(),
+                request == null ? null : request.endedAt());
+    }
+
+    /** Add food/drinks to a running session (same item added again increases the quantity). */
+    @PostMapping("/{id}/items")
+    @ResponseStatus(HttpStatus.CREATED)
+    public SessionResponse addItem(@PathVariable Long id, @Valid @RequestBody SessionItemRequest request) {
+        return sessionItemService.addItem(id, request);
+    }
+
+    @PatchMapping("/{id}/items/{lineId}")
+    public SessionResponse changeItemQuantity(@PathVariable Long id, @PathVariable Long lineId,
+                                              @Valid @RequestBody ItemQuantityRequest request) {
+        return sessionItemService.changeQuantity(id, lineId, request.quantity());
+    }
+
+    @DeleteMapping("/{id}/items/{lineId}")
+    public SessionResponse removeItem(@PathVariable Long id, @PathVariable Long lineId) {
+        return sessionItemService.removeItem(id, lineId);
     }
 
     /**
