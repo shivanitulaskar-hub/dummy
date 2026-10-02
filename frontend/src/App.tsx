@@ -1,7 +1,8 @@
+import { lazy, Suspense } from 'react';
+import { CircularProgress } from '@mui/material';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAuth } from './auth/RequireAuth';
 import { AppLayout } from './components/AppLayout';
-import { PlaceholderPage } from './components/PlaceholderPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { LiveSessionsPage } from './pages/LiveSessionsPage';
 import { LoginPage } from './pages/LoginPage';
@@ -12,6 +13,13 @@ import { BillsPage } from './pages/BillsPage';
 import { FoodPage } from './pages/FoodPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
+import { CustomersPage } from './pages/CustomersPage';
+import { DailyClosingPage } from './pages/DailyClosingPage';
+import { RentalsPage } from './pages/RentalsPage';
+import { ReportsPage } from './pages/ReportsPage';
+
+// Charts are only needed on the dashboard; keep them out of the bundle the counter loads first.
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 
 export function App() {
   return (
@@ -26,22 +34,18 @@ export function App() {
           <Route path="/live" element={<LiveSessionsPage />} />
           <Route
             path="/dashboard"
-            element={<PlaceholderPage title="Dashboard" phase={4} description="Revenue tiles, charts and station utilization." />}
+            element={
+              <Suspense fallback={<CircularProgress />}>
+                <DashboardPage />
+              </Suspense>
+            }
           />
           <Route path="/bills" element={<BillsPage />} />
-          <Route
-            path="/customers"
-            element={<PlaceholderPage title="Customers" phase={4} description="Customer master, search and history." />}
-          />
+          <Route path="/customers" element={<CustomersPage />} />
           <Route path="/food" element={<FoodPage />} />
-          <Route
-            path="/rentals"
-            element={<PlaceholderPage title="Game Rentals" phase={4} description="Rent out and return games, late fees and ROI." />}
-          />
-          <Route
-            path="/reports"
-            element={<PlaceholderPage title="Reports" phase={4} description="Daily/monthly sales, payment and utilization reports with CSV export." />}
-          />
+          <Route path="/rentals" element={<RentalsPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/closing" element={<DailyClosingPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route element={<RequireAuth roles={['ADMIN']} />}>
             <Route path="/pricing" element={<PricingPage />} />

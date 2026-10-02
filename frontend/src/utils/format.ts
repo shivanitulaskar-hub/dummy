@@ -50,3 +50,11 @@ export function formatDateTime(iso: string | null | undefined): string {
     minute: '2-digit',
   });
 }
+
+/** Calendar date in the browser's timezone (the cafe's), as yyyy-mm-dd. toISOString() would give the UTC date. */
+export function localIsoDate(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}

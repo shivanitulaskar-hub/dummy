@@ -26,6 +26,7 @@ function InvoiceDocument({ invoice, format }: { invoice: Invoice; format: Format
   const gstOn = bill.taxLines.some((t) => t.ratePercent > 0);
   const paid = bill.payments.filter((p) => p.type === 'PAYMENT');
   const refunds = bill.payments.filter((p) => p.type === 'REFUND');
+  const deposits = bill.payments.filter((p) => p.type === 'DEPOSIT' || p.type === 'DEPOSIT_REFUND');
   return (
     <div className={`invoice invoice-${format}`}>
       <header className="inv-header">
@@ -112,6 +113,12 @@ function InvoiceDocument({ invoice, format }: { invoice: Invoice; format: Format
           ))}
           {refunds.map((p) => (
             <tr key={p.id}><td>Refunded ({p.mode})</td><td className="num">{money(-p.amount)}</td></tr>
+          ))}
+          {deposits.map((p) => (
+            <tr key={p.id}>
+              <td>{p.type === 'DEPOSIT' ? 'Refundable deposit taken' : 'Deposit returned'} ({p.mode})</td>
+              <td className="num">{money(p.type === 'DEPOSIT' ? p.amount : -p.amount)}</td>
+            </tr>
           ))}
         </tbody>
       </table>

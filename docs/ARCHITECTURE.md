@@ -51,6 +51,22 @@ code change. The defaults below are what the seed data uses until confirmed.
 * JWT bearer tokens (HS256) with a 12-hour lifetime (one shift). The token lives in `sessionStorage`. This is a LAN app; an httpOnly-cookie variant can be added if it's ever exposed publicly.
 * Single branch. Every business table is reachable from tables that can later receive a `branch_id` column (see §8).
 
+### 1.3 Phase 4 decisions
+
+| Topic | Decision |
+|---|---|
+| Revenue definition | One definition everywhere (closing, dashboard, reports): only **PAID** bills are sales, dated by their business date. Gaming/food/rental figures are line amounts before discount; **net sales** = bill totals (after discount, with GST and round-off). Payment, refund and deposit totals come from payment rows dated that day. A cancelled bill drops out of its day's sales; its refund appears on the day it was given. |
+| Rental money | The rental charge is a RENTAL bill paid when the disc goes out; the **deposit** is a `DEPOSIT` payment on that bill and goes back as `DEPOSIT_REFUND` in the same mode on return (not revenue, but counted in expected cash). A **late fee** is charged on its own RENTAL bill at return, so paid bills are never edited. Deposits are always refunded in full; withholding a deposit for damage is not supported yet. |
+| Rental price | Game price covers one period (default 7 days); longer rentals pay per started period. |
+| Overdue | Not stored: a rental is shown as `OVERDUE` while it is `OUT` past the expected return time + grace (`rental.late-grace-hours`, default 2 h). Late days = started 24 h periods after the expected return time. |
+| Rental cancel | For mistakes only: refunds charge and deposit. Operators within the session cancel window (15 min), admins any time while the disc is out. Rental bills can't be cancelled from the Bills screen. |
+| ROI per disc | Revenue = rental charges + late fees of non-cancelled rentals (before GST). ROI = (revenue − cost) ÷ cost; rentals to break even = ⌈cost ÷ current price⌉. |
+| Customer count | Distinct customers on paid bills + bills without a customer (each walk-in counts once). |
+| Gaming hours | Billed minutes (what the customer paid for). Station utilization uses minutes actually played ÷ (days × `reports.station-hours-per-day`). |
+| Profit estimate | Sales excluding GST − food cost at **current** cost prices. Excludes rent, salaries, power and game purchases. Admin only. |
+| Closing | Operators close; admins reopen with a reason. A day can't be closed in the future or while sessions are running on it. Starting sessions, walk-in sales, rentals, returns, cancellations and stock entries all check the day is open. |
+| Exports | CSV (UTF-8 with BOM for Excel) and real `.xlsx` (Apache POI) from the same report table. Text starting with `= + - @` is prefixed with `'` in CSV to stop spreadsheet formula injection. Ranges are capped at 2 years. |
+
 ---
 
 ## 2. Architecture
@@ -90,9 +106,9 @@ code change. The defaults below are what the seed data uses until confirmed.
 | Two operators start a session on the same PS5 | (1) `SELECT … FOR UPDATE` on the station row inside the start transaction; (2) **database backstop**: a generated column `active_station_id` (= station_id when status is ACTIVE, else NULL) with a **UNIQUE index**. Even a bug in the service can't create two active sessions. The loser gets `409 STATION_OCCUPIED`. |
 | Double-click / two operators completing the same bill | Bill row locked `FOR UPDATE` + status check (`OPEN` only) + `@Version` optimistic locking. Completion requests carry an **idempotency key** (`UNIQUE`), so a retried request returns the original result instead of charging twice. |
 | Duplicate bill numbers | Counter row in `bill_number_sequences` locked `FOR UPDATE` in the same transaction that marks the bill PAID + `UNIQUE(bill_number)`. |
-| Same game disc rented twice | Generated column `active_game_id` + UNIQUE index (same pattern as stations). |
 | Stock races | Stock changes are insert-only `inventory_transactions`; the cached `food_items.stock_quantity` is updated with an atomic `UPDATE … SET stock = stock + ?` in the same transaction. |
-| Editing a closed day | Service-level guard checks `daily_closings` for the business date; admin reopen is audited. |
+| Editing a closed day | Every action that moves money or stock on a business day first takes a **shared lock** on that day's `daily_closings` row (created as `OPEN` in its own short transaction the first time it's needed); closing takes an **exclusive lock** on it. A closing therefore waits for bills being paid at that moment and includes them, and a bill paid during the closing waits and is then refused (`DAY_CLOSED`). A race test fires sales and the closing together. Admin reopen is audited. |
+| Same disc rented twice | Game row locked `FOR UPDATE` + generated `active_game_id` UNIQUE backstop → `409 GAME_ALREADY_RENTED`. |
 | Seeing a stale row after waiting for a lock | Session write operations run at **READ COMMITTED**. Under MySQL's default REPEATABLE READ, a request that waited on a row lock could keep reading the snapshot from before the wait (e.g. a retried completion not seeing the bill the first request just committed). |
 | Deadlock on the bill-number counter | The counter row is only ever locked with `SELECT … FOR UPDATE`. A new year's row is created in its own committed transaction first. (`INSERT IGNORE` + `FOR UPDATE` in one transaction takes a shared then an exclusive lock and deadlocks when two counters bill at once; found and fixed via the concurrency tests.) |
 | Food added while the bill is being completed | Adding/changing/removing food locks the **session row first, then the bill**, the same order as completing; a lock-order race test checks that every unit taken from stock is on the paid bill. |
@@ -153,8 +169,8 @@ and `updated_at` where the row is mutable; mutable aggregates have `version` for
 | `gaming_sessions` | Play sessions | FK station, customer, bill (UNIQUE), pricing_plan; `player_count`, `started_at`, `ended_at`, `actual_minutes`, `credit_minutes`, `billable_minutes`, `gaming_amount`, `status`; generated `active_station_id` **UNIQUE** |
 | `session_time_credits` | 15-min credits (with reason) | FK session, FK bill_item (source), `minutes`, `reason`, `created_by` |
 | `game_master` | Physical game copies | UNIQUE(name, copy_number), `purchase_price`, `rental_price`, `rental_period_days`, `late_fee_per_day`, `default_deposit`, `available_for_rental`, `active` |
-| `game_rentals` | Rental transactions | `rental_number` UNIQUE, FK game, customer, bill; `out_at`, `expected_return_at`, `returned_at`, `rental_price`, `deposit_amount`, `late_days`, `late_fee`, `deposit_refunded`, `status`; generated `active_game_id` **UNIQUE** |
-| `daily_closings` | End-of-day snapshot | `business_date` UNIQUE, `status` (CLOSED/REOPENED), all revenue/payment-mode totals, counts, `opening_cash`, `expected_cash`, `actual_cash`, `cash_difference`, `closed_by`, `reopened_by`, `reopen_reason` |
+| `game_rentals` | Rental transactions | `rental_number` UNIQUE, FK game, customer, bill; `out_at`, `expected_return_at`, `returned_at`, `late_fee_bill_id`, `rental_price`, `deposit_amount`, `late_days`, `late_fee`, `deposit_refunded`, `status`; generated `active_game_id` **UNIQUE** |
+| `daily_closings` | End-of-day snapshot (one row per business day, also the day lock) | `business_date` UNIQUE, `status` (OPEN/CLOSED/REOPENED), `bill_count`, `round_off_total`, `deposit_total`, `deposit_refund_total`, all revenue/payment-mode totals, counts, `opening_cash`, `expected_cash`, `actual_cash`, `cash_difference`, `closed_by`, `reopened_by`, `reopen_reason` |
 | `audit_logs` | Who did what | `user_id`, `username` snapshot, `action`, `entity_type`, `entity_id`, `old_value` JSON, `new_value` JSON, `ip_address`, `created_at`; indexes on (entity_type, entity_id) and created_at |
 
 The complete DDL is in `backend/src/main/resources/db/migration/V1__baseline_schema.sql`.

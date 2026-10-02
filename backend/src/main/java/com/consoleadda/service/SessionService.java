@@ -96,6 +96,8 @@ public class SessionService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public SessionResponse start(StartSessionRequest request) {
         Instant now = clock.instant();
+        // A session started on a closed day could never be paid; refuse it up front.
+        businessDay.ensureOpen(businessDay.businessDate(now));
         GamingStation station = stationRepository.findByIdForUpdate(request.stationId())
                 .orElseThrow(() -> new NotFoundException("Station", request.stationId()));
         if (!station.isActive()) {

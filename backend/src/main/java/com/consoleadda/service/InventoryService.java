@@ -79,6 +79,7 @@ public class InventoryService {
         };
         FoodItem item = itemRepository.findById(request.foodItemId())
                 .orElseThrow(() -> new NotFoundException("Menu item", request.foodItemId()));
+        businessDay.ensureOpen(businessDay.today());
         if (!item.isTrackInventory()) {
             throw BusinessException.badRequest("NOT_TRACKED", "'" + item.getName() + "' does not track stock");
         }

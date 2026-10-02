@@ -35,6 +35,12 @@ public interface GamingSessionRepository extends JpaRepository<GamingSession, Lo
 
     Optional<GamingSession> findByBillId(Long billId);
 
+    @Query("""
+            select s from GamingSession s join fetch s.station join fetch s.bill
+            where s.customer.id = :customerId order by s.startedAt desc""")
+    List<GamingSession> findByCustomer(@Param("customerId") Long customerId,
+                                       org.springframework.data.domain.Pageable pageable);
+
     /** Row lock that serialises concurrent end/complete/cancel requests for the same session. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from GamingSession s where s.id = :id")

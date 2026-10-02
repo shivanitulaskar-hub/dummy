@@ -202,6 +202,10 @@ public class BillService {
             throw BusinessException.conflict("BILL_NOT_PAID", "Only paid bills can be cancelled (this one is "
                     + bill.getStatus().name().toLowerCase() + ")");
         }
+        if (bill.getBillType() == BillType.RENTAL) {
+            throw BusinessException.conflict("RENTAL_BILL", "Rental bills are refunded by cancelling the rental "
+                    + "on the Rentals screen, so the disc and deposit are handled too.");
+        }
         Instant now = clock.instant();
         LocalDate today = businessDay.businessDate(now);
         businessDay.ensureOpen(bill.getBusinessDate());

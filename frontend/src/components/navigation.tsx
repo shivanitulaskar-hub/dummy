@@ -9,6 +9,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import InventoryIcon from '@mui/icons-material/Inventory2';
 import SellIcon from '@mui/icons-material/Sell';
 import SettingsIcon from '@mui/icons-material/Settings';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import type { Role } from '../api/types';
 
 export interface NavItem {
@@ -27,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/food', label: 'Food', icon: <FastfoodIcon /> },
   { path: '/rentals', label: 'Rentals', icon: <AlbumIcon /> },
   { path: '/reports', label: 'Reports', icon: <AssessmentIcon /> },
+  { path: '/closing', label: 'Daily Closing', icon: <EventAvailableIcon /> },
   { path: '/inventory', label: 'Inventory', icon: <InventoryIcon /> },
   { path: '/pricing', label: 'Pricing', icon: <SellIcon />, roles: ['ADMIN'] },
   { path: '/settings', label: 'Settings', icon: <SettingsIcon />, roles: ['ADMIN'] },

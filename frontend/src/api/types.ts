@@ -336,3 +336,243 @@ export interface Page<T> {
   totalElements: number;
   totalPages: number;
 }
+
+// ---------------------------------------------------------------- Phase 4
+
+export interface Customer {
+  id: number;
+  name: string;
+  mobile: string | null;
+  email: string | null;
+  notes: string | null;
+  totalSessions: number;
+  totalGamingMinutes: number;
+  totalSpent: number;
+  lastVisitAt: string | null;
+  createdAt: string;
+}
+
+export interface CustomerRequest {
+  name: string;
+  mobile?: string | null;
+  email?: string | null;
+  notes?: string | null;
+}
+
+export interface CustomerHistory {
+  customer: Customer;
+  sessions: {
+    id: number;
+    stationCode: string;
+    playerCount: number;
+    startedAt: string;
+    endedAt: string | null;
+    billableMinutes: number | null;
+    gamingAmount: number | null;
+    status: SessionStatus;
+    billId: number;
+    billNumber: string | null;
+  }[];
+  bills: BillSummary[];
+  food: { item: string; quantity: number; amount: number; lastBoughtAt: string | null }[];
+  rentals: Rental[];
+}
+
+export type RentalStatus = 'OUT' | 'RETURNED' | 'OVERDUE' | 'CANCELLED';
+
+export interface Rental {
+  id: number;
+  rentalNumber: string;
+  gameId: number;
+  gameName: string;
+  copyNumber: number;
+  customerId: number | null;
+  customerName: string;
+  customerMobile: string;
+  rentalDays: number;
+  rentalPrice: number;
+  depositAmount: number;
+  outAt: string;
+  expectedReturnAt: string;
+  returnedAt: string | null;
+  status: RentalStatus;
+  lateDays: number;
+  lateFee: number;
+  accruedLateDays: number;
+  accruedLateFee: number;
+  totalAmount: number;
+  depositRefunded: number;
+  paymentMode: PaymentMode | null;
+  billId: number | null;
+  billNumber: string | null;
+  lateFeeBillId: number | null;
+  lateFeeBillNumber: string | null;
+  notes: string | null;
+}
+
+export interface ReturnPreview {
+  rentalId: number;
+  expectedReturnAt: string;
+  returnAt: string;
+  lateDays: number;
+  lateFeePerDay: number;
+  lateFee: number;
+  lateFeeTotal: number;
+  depositToRefund: number;
+  depositMode: PaymentMode | null;
+}
+
+export interface GameRequest {
+  name: string;
+  copyNumber: number;
+  platform?: string | null;
+  purchasePrice: number;
+  purchaseDate?: string | null;
+  rentalPrice: number;
+  rentalPeriodDays: number;
+  lateFeePerDay: number;
+  defaultDeposit: number;
+  availableForRental: boolean;
+  active: boolean;
+  notes?: string | null;
+}
+
+export interface Game {
+  id: number;
+  name: string;
+  copyNumber: number;
+  platform: string;
+  purchasePrice: number | null;
+  purchaseDate: string | null;
+  rentalPrice: number;
+  rentalPeriodDays: number;
+  lateFeePerDay: number;
+  defaultDeposit: number;
+  availableForRental: boolean;
+  active: boolean;
+  notes: string | null;
+  currentRental: { rentalId: number; rentalNumber: string; customerName: string; expectedReturnAt: string; overdue: boolean } | null;
+  roi: {
+    purchaseCost: number;
+    revenue: number;
+    rentals: number;
+    remaining: number;
+    roiPercent: number | null;
+    breakEvenRentals: number | null;
+    rentalsToRecover: number | null;
+    recovered: boolean;
+  } | null;
+}
+
+export type DayStatus = 'OPEN' | 'CLOSED' | 'REOPENED';
+
+export interface DailyClosing {
+  businessDate: string;
+  status: DayStatus;
+  live: boolean;
+  figures: {
+    billCount: number;
+    sessionCount: number;
+    customerCount: number;
+    gamingMinutes: number;
+    foodUnitsSold: number;
+    gamingRevenue: number;
+    foodRevenue: number;
+    rentalRevenue: number;
+    grossSales: number;
+    discountTotal: number;
+    taxTotal: number;
+    roundOffTotal: number;
+    totalRevenue: number;
+    cash: number;
+    upi: number;
+    card: number;
+    other: number;
+    refundTotal: number;
+    depositTotal: number;
+    depositRefundTotal: number;
+  };
+  cash: {
+    openingCash: number;
+    cashPayments: number;
+    cashDeposits: number;
+    cashRefunds: number;
+    cashDepositRefunds: number;
+    expectedCash: number;
+  };
+  actualCash: number | null;
+  cashDifference: number | null;
+  notes: string | null;
+  activeSessions: string[];
+  closedBy: string | null;
+  closedAt: string | null;
+  reopenedBy: string | null;
+  reopenedAt: string | null;
+  reopenReason: string | null;
+}
+
+export interface ClosingSummary {
+  businessDate: string;
+  status: DayStatus;
+  totalRevenue: number;
+  expectedCash: number;
+  actualCash: number;
+  cashDifference: number;
+  closedBy: string | null;
+  closedAt: string | null;
+}
+
+export interface Dashboard {
+  businessDate: string;
+  today: {
+    netSales: number;
+    gamingRevenue: number;
+    foodRevenue: number;
+    rentalRevenue: number;
+    billCount: number;
+    sessionCount: number;
+    gamingMinutes: number;
+    foodUnits: number;
+    averageBill: number;
+    profitEstimate: number | null;
+  };
+  activeStations: number;
+  totalStations: number;
+  rentalsOut: number;
+  rentalsOverdue: number;
+  month: {
+    month: string;
+    from: string;
+    to: string;
+    netSales: number;
+    gamingRevenue: number;
+    foodRevenue: number;
+    rentalRevenue: number;
+    billCount: number;
+    sessionCount: number;
+    gamingMinutes: number;
+    profitEstimate: number;
+  } | null;
+  revenueByDay: { date: string; gaming: number; food: number; rental: number; netSales: number }[] | null;
+  paymentMethods: { mode: PaymentMode; amount: number }[] | null;
+  stationUtilization: { stationCode: string; sessions: number; minutesPlayed: number; utilizationPercent: number }[] | null;
+}
+
+export type ReportColumnType = 'TEXT' | 'INTEGER' | 'DECIMAL' | 'MONEY' | 'PERCENT' | 'DATE' | 'DATETIME';
+
+export interface ReportTable {
+  type: string;
+  title: string;
+  from: string;
+  to: string;
+  columns: { key: string; label: string; type: ReportColumnType }[];
+  rows: Record<string, string | number | null>[];
+  totals: Record<string, string | number | null> | null;
+  note: string | null;
+}
+
+export interface ReportInfo {
+  type: string;
+  title: string;
+  adminOnly: boolean;
+}

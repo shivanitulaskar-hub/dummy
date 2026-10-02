@@ -18,6 +18,9 @@ public interface BillRepository extends JpaRepository<Bill, Long> {
 
     Optional<Bill> findByIdempotencyKey(String idempotencyKey);
 
+    @Query("select b from Bill b where b.customer.id = :customerId and b.status <> 'OPEN' order by b.id desc")
+    java.util.List<Bill> findByCustomer(@Param("customerId") Long customerId, Pageable pageable);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from Bill b where b.id = :id")
     Optional<Bill> findByIdForUpdate(@Param("id") Long id);

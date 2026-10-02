@@ -16,6 +16,9 @@ public final class SettingKeys {
     public static final String INVOICE_FOOTER = "invoice.footer";
     public static final String OPERATOR_CANCEL_WINDOW = "session.operator-cancel-window-minutes";
     public static final String MAX_END_BACKDATE = "session.max-end-backdate-minutes";
+    public static final String RENTAL_NUMBER_PREFIX = "rental.number-prefix";
+    public static final String RENTAL_LATE_GRACE_HOURS = "rental.late-grace-hours";
+    public static final String STATION_HOURS_PER_DAY = "reports.station-hours-per-day";
 
     private SettingKeys() {
     }

@@ -22,6 +22,13 @@ import { toUserMessage } from '../../api/errors';
 import { useAuth } from '../../auth/AuthContext';
 import { formatDateTime, formatINR, formatMinutes, formatTime } from '../../utils/format';
 
+const PAYMENT_LABEL = {
+  PAYMENT: 'Paid',
+  REFUND: 'Refund',
+  DEPOSIT: 'Deposit taken',
+  DEPOSIT_REFUND: 'Deposit returned',
+} as const;
+
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ py: 0.3 }}>
@@ -98,8 +105,8 @@ export function BillDetailDialog({ billId, onClose }: { billId: number | null; o
             {b.payments.map((p) => (
               <Row
                 key={p.id}
-                label={`${p.type === 'REFUND' ? 'Refund' : 'Paid'} · ${p.mode}${p.referenceNo ? ` (${p.referenceNo})` : ''}`}
-                value={`${p.type === 'REFUND' ? '− ' : ''}${formatINR(p.amount)}`}
+                label={`${PAYMENT_LABEL[p.type]} · ${p.mode}${p.referenceNo ? ` (${p.referenceNo})` : ''}`}
+                value={`${p.type === 'REFUND' || p.type === 'DEPOSIT_REFUND' ? '− ' : ''}${formatINR(p.amount)}`}
               />
             ))}
             {b.status === 'CANCELLED' && (
@@ -131,7 +138,7 @@ export function BillDetailDialog({ billId, onClose }: { billId: number | null; o
           </>
         )}
         <Box sx={{ flex: 1 }} />
-        {user?.role === 'ADMIN' && b?.status === 'PAID' && !cancelling && (
+        {user?.role === 'ADMIN' && b?.status === 'PAID' && b.billType !== 'RENTAL' && !cancelling && (
           <Button color="error" onClick={() => setCancelling(true)}>
             Cancel bill
           </Button>

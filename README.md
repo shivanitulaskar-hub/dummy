@@ -3,12 +3,13 @@
 Web application for **Console Adda**, a PS5 gaming cafe in Mumbai. It runs the counter: live PS5
 sessions, automatic billing, food & beverages, game rentals, inventory, daily closing and reports.
 
-> **Status: Phase 3 of 6 complete.** Working today: login with roles, live PS5 session board
+> **Status: Phase 4 of 6 complete.** Working today: login with roles, live PS5 session board
 > (start → add food → END → discount → payment → numbered bill → print), billing & rounding engine,
 > pricing master, station management, food menu, counter (walk-in) sales, 15-minute drink credit,
-> discounts, per-category GST, stock ledger, bill search and cancellation, A4 and 80 mm invoices, audit
-> trail. Customers, rentals, reports, dashboard and daily closing arrive in Phase 4. Screens for later
-> phases are shown as clearly-labelled placeholders. See [Roadmap](#roadmap).
+> discounts, per-category GST, stock ledger, bill search and cancellation, A4 and 80 mm invoices,
+> customer master with history, game rentals (deposits, late fees, ROI per disc), dashboard with charts,
+> 10 reports with CSV/Excel export, and daily closing with cash count and day locking. The admin panel
+> for users and business details arrives in Phase 5. See [Roadmap](#roadmap).
 
 ## Contents
 - [Architecture](#architecture)
@@ -152,8 +153,14 @@ print dialog and turn off headers/footers and margins once; the browser remember
 
 **Seed data to review before go-live:** set opening stock and reorder levels in Inventory (low-stock
 warnings start once a reorder level is set), food cost prices are `0.00` (needed for profit),
-rental game prices are the spec's sample values, GST is disabled, and the additional-player rule
-is pending confirmation (see `docs/ARCHITECTURE.md` §1.1).
+rental game prices are the spec's sample values with no late fee or deposit (set them per disc in
+Rentals → Games), GST is disabled, station utilization assumes 12 opening hours a day (setting
+`reports.station-hours-per-day`), and the additional-player rule is pending confirmation (see
+`docs/ARCHITECTURE.md` §1.1).
+
+**Daily closing:** close each business day from *Daily Closing* after counting the drawer. Once closed,
+nothing can be paid, refunded, rented or stocked on that day until an admin reopens it (with a reason,
+audited). A day can't be closed while sessions are still running.
 
 ## API documentation
 
@@ -192,7 +199,18 @@ Endpoints available now:
 | POST | `/api/inventory/transactions` (purchase, wastage; opening & adjustment admin only) | logged in |
 | POST | `/api/bills` (walk-in food sale, + optional `Idempotency-Key`) | logged in |
 | GET | `/api/bills?q=&from=&to=&status=`, `/api/bills/{id}`, `/api/bills/{id}/invoice` | logged in |
-| POST | `/api/bills/{id}/cancel` (full refund, stock returned) | ADMIN |
+| POST | `/api/bills/{id}/cancel` (full refund, stock returned; not for rental bills) | ADMIN |
+| GET · POST · PUT | `/api/customers?q=`, `/api/customers[/{id}]`, `/api/customers/{id}/history` | logged in |
+| GET | `/api/games` (purchase cost & ROI admin only) | logged in |
+| POST / PUT | `/api/games[/{id}]` | ADMIN |
+| POST | `/api/rentals` (+ optional `Idempotency-Key`) | logged in |
+| GET | `/api/rentals?status=OUT\|OVERDUE\|RETURNED\|CANCELLED&q=`, `/api/rentals/{id}`, `/api/rentals/{id}/return-preview` | logged in |
+| POST | `/api/rentals/{id}/return`, `/api/rentals/{id}/cancel` (operator within 15 min; admin while out) | logged in |
+| GET | `/api/daily-closing`, `/api/daily-closing/today`, `/api/daily-closing/{date}?openingCash=` | logged in |
+| POST | `/api/daily-closing/{date}/close` | logged in |
+| POST | `/api/daily-closing/{date}/reopen` | ADMIN |
+| GET | `/api/dashboard` (profit, month and charts admin only) | logged in |
+| GET | `/api/reports`, `/api/reports/{type}?from=&to=`, `/api/reports/{type}/export?format=csv\|xlsx` | `daily`: logged in; others ADMIN |
 | GET | `/api/discounts`, `/api/discounts/usable` | logged in |
 | POST / PUT | `/api/discounts[/{id}]` | ADMIN |
 | GET · PUT | `/api/settings/tax`, `/api/settings/tax/{GAMING\|FOOD\|RENTAL}` | ADMIN |
@@ -212,7 +230,8 @@ cd frontend && npm run lint && npm run build
 Integration tests start a throwaway MySQL container and run the real Flyway migrations, so they
 test the actual schema, constraints and SQL, not an in-memory imitation. Concurrency tests release
 several requests at once (simultaneous starts on one PS5, simultaneous bill completions, retried
-requests) and check that exactly one succeeds and nothing is double-billed.
+requests, two rentals of one disc, sales racing the daily closing) and check that exactly one succeeds,
+nothing is double-billed and no sale escapes a closed day's totals.
 
 ## Production deployment
 
@@ -260,6 +279,6 @@ Backups contain customer names and mobile numbers, so store them securely.
 | 1 | Architecture, schema, Docker, Flyway, authentication, app shell | ✅ Done |
 | 2 | Stations admin, pricing master, billing & rounding engine, sessions | ✅ Done |
 | 3 | Food, inventory, bills, discounts, GST, invoice printing | ✅ Done |
-| 4 | Customers, game rentals, reports, dashboard, daily closing | Next |
-| 5 | Admin panel, audit log, security hardening | Planned |
+| 4 | Customers, game rentals, reports, dashboard, daily closing | ✅ Done |
+| 5 | Admin panel, audit log, security hardening | Next |
 | 6 | Full testing, bug fixing, UI polish, production review | Planned |

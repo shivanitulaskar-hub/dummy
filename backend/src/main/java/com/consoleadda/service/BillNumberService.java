@@ -41,7 +41,12 @@ public class BillNumberService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public String next(LocalDate businessDate) {
-        String prefix = settings.getString(SettingKeys.BILL_PREFIX, "CA");
+        return next(settings.getString(SettingKeys.BILL_PREFIX, "CA"), businessDate);
+    }
+
+    /** Same numbering for other documents (e.g. rentals, prefix {@code RN}). Each prefix has its own sequence. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public String next(String prefix, LocalDate businessDate) {
         int year = businessDate.getYear();
         List<Long> current = jdbc.queryForList(SELECT_FOR_UPDATE, Long.class, prefix, year);
         if (current.isEmpty()) {
